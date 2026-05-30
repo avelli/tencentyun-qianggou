@@ -36,7 +36,7 @@ python snap_up.py
 
 ## 致谢
 
-感谢 [zhouyifan007/tencentyun-snake-up](https://github.com/zhouyifan007/tencentyun-snake-up) 提供的思路和参考。
+项目参考 [zhouyifan007/tencentyun-snake-up](https://github.com/zhouyifan007/tencentyun-snake-up) 的实现方式。
 
 ## 免责声明
 
