@@ -1,4 +1,4 @@
-# 云雀秒购 项目整理实施计划
+# 腾讯云抢购脚本 项目整理实施计划
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -43,7 +43,7 @@ rtk sh -lc 'printf "%s\n" cookies.json csrf_token.txt __pycache__/'
 - [ ] **Step 1: 写入项目说明、安装、使用、致谢、免责声明**
 
 ```markdown
-# 云雀秒购
+# 腾讯云抢购脚本
 
 基于 Playwright 的腾讯云活动抢购辅助脚本。
 
@@ -154,7 +154,7 @@ rtk git remote -v
 
 ```bash
 rtk git branch -M main
-rtk git remote add avelli git@github.com:avelli/yunque-seckill.git
+rtk git remote add avelli git@github.com:avelli/tencentyun-qianggou.git
 ```
 
 ### Task 5: 验证、提交并推送
