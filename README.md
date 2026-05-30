@@ -27,6 +27,7 @@ playwright install chromium
 ```bash
 python snap_up.py
 ```
+或win系统直接运行bat脚本启动。
 
 ## 项目结构
 
