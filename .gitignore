@@ -1,0 +1,7 @@
+cookies.json
+csrf_token.txt
+__pycache__/
+*.pyc
+.venv/
+.DS_Store
+.bytro
