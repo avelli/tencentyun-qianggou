@@ -1,6 +1,7 @@
 # 腾讯云抢购脚本
 
-基于 Playwright 的腾讯云活动抢购辅助脚本。
+基于 Playwright 的腾讯云活动抢购辅助脚本（特惠活动新人38元专用）。
+<img width="370" height="323" alt="image" src="https://github.com/user-attachments/assets/edb5f488-b646-4d4f-ab42-bdc7770217b2" />
 
 ## 特性
 
