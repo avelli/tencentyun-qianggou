@@ -55,24 +55,59 @@ def get_next_seckill_time():
 
 # =================== 工具函数 =================== #
 
-def get_server_time():
+TIME_OFFSET_MS = None  # 服务器时间 - 本地时间 的偏移量(毫秒)
+
+
+def calibrate_time_offset(samples=5):
+    """多次采样计算本地时钟与服务器时钟的偏移量，补偿网络RTT"""
+    global TIME_OFFSET_MS
     urls = [
         "https://cloud.tencent.com",
         "https://www.tencent.com",
         "https://www.qq.com",
     ]
-    for url in urls:
-        try:
-            response = req_lib.head(url, timeout=10)
-            server_time = response.headers.get("Date")
-            if server_time:
-                dt = datetime.strptime(server_time, "%a, %d %b %Y %H:%M:%S GMT")
-                beijing_time = dt + timedelta(hours=8)
-                return int(beijing_time.timestamp() * 1000)
-        except Exception:
-            continue
-    log("所有时间源均超时，使用本地时间")
-    return int(time.time() * 1000)
+    offsets = []
+    for _ in range(samples):
+        for url in urls:
+            try:
+                t1 = time.time()
+                response = req_lib.head(url, timeout=10)
+                t2 = time.time()
+                server_time = response.headers.get("Date")
+                if server_time:
+                    dt = datetime.strptime(server_time, "%a, %d %b %Y %H:%M:%S GMT")
+                    beijing_time = dt + timedelta(hours=8)
+                    server_ms = int(beijing_time.timestamp() * 1000)
+                    # 用请求往返中点作为本地参考时间，补偿单程延迟
+                    local_mid_ms = int((t1 + t2) / 2 * 1000)
+                    rtt_ms = int((t2 - t1) * 1000)
+                    offset = server_ms - local_mid_ms
+                    offsets.append(offset)
+                    log(f"  时间采样: RTT={rtt_ms}ms, 偏移={offset}ms (源: {url})")
+                    break
+            except Exception:
+                continue
+        time.sleep(0.3)
+
+    if not offsets:
+        log("所有时间源均失败，偏移量设为0（使用本地时间）")
+        TIME_OFFSET_MS = 0
+        return
+
+    # 去掉最大最小值后取平均，减少异常值影响
+    if len(offsets) >= 3:
+        offsets.sort()
+        offsets = offsets[1:-1]
+    TIME_OFFSET_MS = int(sum(offsets) / len(offsets))
+    log(f"时间校准完成: 偏移量={TIME_OFFSET_MS}ms (采样{len(offsets)}次)")
+
+
+def get_server_time():
+    """基于校准偏移量推算当前服务器时间，无需每次发请求"""
+    global TIME_OFFSET_MS
+    if TIME_OFFSET_MS is None:
+        calibrate_time_offset()
+    return int(time.time() * 1000) + TIME_OFFSET_MS
 
 
 def build_do_goods_js(region_id, token):
@@ -358,6 +393,11 @@ if __name__ == "__main__":
         log("浏览器就绪，保活机制已启动")
         print("=" * 50, flush=True)
 
+        # 初始时间校准
+        log("正在校准服务器时间...")
+        calibrate_time_offset()
+        print("-" * 50, flush=True)
+
         # 预检
         bm.precheck()
         print("-" * 50, flush=True)
@@ -366,19 +406,25 @@ if __name__ == "__main__":
         while True:
             seckill_dt, seckill_ts = get_next_seckill_time()
             log(f"下一次抢购时间: {seckill_dt.strftime('%Y-%m-%d %H:%M:%S')}")
+            recalibrated = False
 
             # 等待秒杀时间（带保活）
             while True:
                 bm.keepalive()
                 current_time = get_server_time()
-                if current_time is None:
-                    time.sleep(1)
-                    continue
                 diff_ms = seckill_ts - current_time
                 if diff_ms <= 0:
                     log("秒杀时间到！开始抢购！")
                     break
                 diff_seconds = diff_ms / 1000
+
+                # 距抢购30秒时重新校准一次，确保最终精度
+                if not recalibrated and diff_seconds <= 30:
+                    log("临近抢购，重新校准时间...")
+                    calibrate_time_offset(samples=3)
+                    recalibrated = True
+                    continue
+
                 if diff_seconds > 60:
                     log(f"距离秒杀还有 {diff_seconds:.0f} 秒 ({diff_seconds/60:.1f}分钟)")
                     time.sleep(30)
@@ -387,7 +433,7 @@ if __name__ == "__main__":
                     time.sleep(1)
                 else:
                     log(f"距离秒杀还有 {diff_seconds:.3f} 秒")
-                    time.sleep(0.1)
+                    time.sleep(0.05)
 
             # 抢购前确认浏览器状态
             if not bm.check_alive():
